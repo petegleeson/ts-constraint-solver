@@ -6,9 +6,8 @@ export const tyStringLiteral = (value: string) => ({
 });
 
 type TyString = ReturnType<typeof tyString>;
-export const tyString = (value: string) => ({
+export const tyString = () => ({
   type: "str" as const,
-  value,
 });
 
 type TyVariable = ReturnType<typeof tyVariable>;
@@ -17,12 +16,23 @@ export const tyVariable = (name: string) => ({
   name,
 });
 
-type Type = TyString | TyStringLiteral | TyVariable;
+type TyConcat = {
+  type: "concat";
+  first: Type;
+  second: Type;
+};
+export const tyConcat = (first: Type, second: Type): TyConcat => ({
+  type: "concat" as const,
+  first,
+  second,
+});
+
+type Type = TyConcat | TyString | TyStringLiteral | TyVariable;
 
 // constraints
 type Equals = ReturnType<typeof equals>;
 export const equals = (left: Type, right: Type) => ({
-  type: "eq",
+  type: "eq" as const,
   left,
   right,
 });
@@ -30,9 +40,39 @@ export const equals = (left: Type, right: Type) => ({
 type Constraint = Equals;
 
 // type substitutions
-type Substitution = { [name: string]: Type };
+type Substitution = { [name: string]: Type }; // @idea extend value to include history
 
 export const solve = (constraint: Constraint): Substitution => {
+  if (constraint.type === "eq") {
+    const { left, right } = constraint;
+    // order is important here
+    if (left.type === "concat") {
+      const { first, second } = left;
+      if (first.type === "strlit" && second.type === "strlit") {
+        return solve(
+          equals(tyStringLiteral(first.value + second.value), right)
+        );
+      }
+      return Object.entries(solve(equals(first, right))).reduce(
+        (subst, [k, type]) => {
+          if (subst[k]) {
+            return {
+              ...subst,
+              ...solve(equals(tyConcat(type, subst[k]), right)),
+            };
+          }
+          return subst;
+        },
+        solve(equals(second, right))
+      );
+    } else if (right.type === "concat") {
+      return solve(equals(right, left));
+    } else if (left.type === "var") {
+      return { [left.name]: right };
+    } else if (right.type === "var") {
+      return solve(equals(right, left));
+    }
+  }
   return {};
 };
 
