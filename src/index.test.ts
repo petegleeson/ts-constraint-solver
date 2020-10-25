@@ -1,33 +1,59 @@
-import { solve, equals, tyConcat, tyVariable, tyStringLiteral } from "./index";
+import {
+  unify,
+  solve,
+  equals,
+  tyConcat,
+  tyVariable,
+  tyStringLiteral,
+} from "./index";
 
 test("type variable equals string literal", () => {
-  expect(
-    solve(equals(tyVariable("x"), tyStringLiteral("hello world")))
-  ).toEqual({ x: tyStringLiteral("hello world") });
+  expect(unify(tyVariable("x"), tyStringLiteral("hello world"))).toEqual({
+    x: tyStringLiteral("hello world"),
+  });
 });
 
 test("type variable equals type variable", () => {
-  expect(solve(equals(tyVariable("x"), tyVariable("y")))).toEqual({
+  expect(unify(tyVariable("x"), tyVariable("y"))).toEqual({
     x: tyVariable("y"),
   });
 });
 
 test("equals is symmetric", () => {
-  expect(
-    solve(equals(tyStringLiteral("hello world"), tyVariable("x")))
-  ).toEqual({ x: tyStringLiteral("hello world") });
+  expect(unify(tyStringLiteral("hello world"), tyVariable("x"))).toEqual({
+    x: tyStringLiteral("hello world"),
+  });
 });
 
 test("string literal concat string literal", () => {
   expect(
-    solve(
-      equals(
-        tyVariable("x"),
-        tyConcat(
-          tyStringLiteral("hello "),
-          tyConcat(tyStringLiteral("brave "), tyStringLiteral("world"))
-        )
+    unify(
+      tyVariable("x"),
+      tyConcat(tyStringLiteral("hello "), tyStringLiteral("world"))
+    )
+  ).toEqual({ x: tyStringLiteral("hello world") });
+});
+
+test("nested string literal concat string literal", () => {
+  expect(
+    unify(
+      tyVariable("x"),
+      tyConcat(
+        tyStringLiteral("hello "),
+        tyConcat(tyStringLiteral("brave "), tyStringLiteral("world"))
       )
     )
   ).toEqual({ x: tyStringLiteral("hello brave world") });
+});
+
+test("unify multiple constraints", () => {
+  expect(
+    solve([
+      equals(tyVariable("x"), tyStringLiteral("world")),
+      equals(
+        tyVariable("y"),
+        tyConcat(tyStringLiteral("hello "), tyVariable("x"))
+      ),
+    ])
+  ).toEqual({ x: tyStringLiteral("hello"), y: tyStringLiteral("hello world") });
 });

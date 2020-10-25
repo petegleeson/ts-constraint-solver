@@ -42,38 +42,48 @@ type Constraint = Equals;
 // type substitutions
 type Substitution = { [name: string]: Type }; // @idea extend value to include history
 
-export const solve = (constraint: Constraint): Substitution => {
-  if (constraint.type === "eq") {
-    const { left, right } = constraint;
-    // order is important here
-    if (left.type === "concat") {
-      const { first, second } = left;
-      if (first.type === "strlit" && second.type === "strlit") {
-        return solve(
-          equals(tyStringLiteral(first.value + second.value), right)
-        );
-      }
-      return Object.entries(solve(equals(first, right))).reduce(
-        (subst, [k, type]) => {
-          if (subst[k]) {
-            return {
-              ...subst,
-              ...solve(equals(tyConcat(type, subst[k]), right)),
-            };
-          }
-          return subst;
-        },
-        solve(equals(second, right))
-      );
-    } else if (right.type === "concat") {
-      return solve(equals(right, left));
-    } else if (left.type === "var") {
-      return { [left.name]: right };
-    } else if (right.type === "var") {
-      return solve(equals(right, left));
+const simplify = (x: Type): Type => {
+  if (x.type === "concat") {
+    const first = simplify(x.first);
+    const second = simplify(x.second);
+    if (first.type === "strlit" && second.type === "strlit") {
+      return tyStringLiteral(`${first.value}${second.value}`);
+    } else {
+      return tyConcat(first, second);
     }
   }
-  return {};
+  return x;
 };
 
-const hello = "jello";
+export const unify = (a: Type, b: Type): Substitution => {
+  if (a.type === "var") {
+    return { [a.name]: simplify(b) };
+  } else if (b.type === "var") {
+    return unify(b, a);
+  }
+  throw `Types do not unify ${a.type} and ${b.type}`;
+};
+
+const extend = (
+  a: Substitution,
+  b: Substitution,
+  onCollision: (t1: Type, t2: Type) => Substitution
+): Substitution => {
+  return Object.entries(a).reduce((subst, [k, type]) => {
+    if (subst[k]) {
+      return {
+        ...subst,
+        ...onCollision(type, subst[k]),
+      };
+    }
+    return subst;
+  }, b);
+};
+
+export const solve = (constraints: Constraint[]): Substitution => {
+  let ret = constraints.reduce((subst, constraint) => {
+    return extend(subst, unify(constraint.left, constraint.right), unify);
+  }, {});
+  console.log(ret);
+  return ret;
+};
