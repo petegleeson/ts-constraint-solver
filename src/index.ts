@@ -27,7 +27,35 @@ export const tyConcat = (first: Type, second: Type): TyConcat => ({
   second,
 });
 
-type Type = TyConcat | TyString | TyStringLiteral | TyVariable;
+type TyFunc = {
+  type: "func";
+  params: Type[];
+  returns: Type;
+};
+export const tyFunc = (params: Type[], returns: Type): TyFunc => ({
+  type: "func" as const,
+  params,
+  returns,
+});
+
+type TyApply = {
+  type: "apply";
+  func: Type;
+  args: Type[];
+};
+export const tyApply = (func: Type, args: Type[]): TyApply => ({
+  type: "apply" as const,
+  args,
+  func,
+});
+
+type Type =
+  | TyConcat
+  | TyString
+  | TyStringLiteral
+  | TyVariable
+  | TyFunc
+  | TyApply;
 
 // constraints
 type Equals = ReturnType<typeof equals>;
@@ -68,6 +96,15 @@ export const unify = (a: Type, b: Type): Substitution => {
     a.value === b.value
   ) {
     return {};
+  } else if (
+    a.type === "func" &&
+    b.type === "func" &&
+    a.params.length === b.params.length
+  ) {
+    return [...a.params.map((p, i) => unify(p, b.params[i]))].reduce(
+      (combined, subst) => compose(combined, subst),
+      unify(a.returns, b.returns)
+    );
   }
   throw `Types do not unify ${a.type} and ${b.type}`;
 };
@@ -77,6 +114,16 @@ const applySubst = (subst: Substitution, ty: Type): Type => {
     return ty;
   } else if (ty.type === "var") {
     return subst[ty.name] || ty;
+  } else if (ty.type === "func") {
+    return tyFunc(
+      ty.params.map((t) => applySubst(subst, t)),
+      applySubst(subst, ty.returns)
+    );
+  } else if (ty.type === "apply") {
+    return tyApply(
+      applySubst(subst, ty.func),
+      ty.args.map((t) => applySubst(subst, t))
+    );
   }
   return tyConcat(applySubst(subst, ty.first), applySubst(subst, ty.second));
 };

@@ -4,6 +4,8 @@ import {
   equals,
   tyConcat,
   tyVariable,
+  tyFunc,
+  tyApply,
   tyStringLiteral,
 } from "./index";
 
@@ -80,4 +82,45 @@ test("solves var eq var", () => {
       equals(tyVariable("y"), tyStringLiteral("hello")),
     ])
   ).toEqual({ x: tyStringLiteral("hello"), y: tyStringLiteral("hello") });
+});
+
+test("solves var eq func", () => {
+  expect(
+    solve([
+      equals(tyVariable("y"), tyStringLiteral("hello")),
+      equals(tyVariable("x"), tyFunc([], tyVariable("y"))),
+    ])
+  ).toEqual({
+    y: tyStringLiteral("hello"),
+    x: tyFunc([], tyStringLiteral("hello")),
+  });
+});
+
+test("solves func eq func", () => {
+  expect(
+    solve([
+      equals(tyVariable("x"), tyFunc([tyVariable("y")], tyVariable("y"))),
+      equals(
+        tyVariable("x"),
+        tyFunc([tyStringLiteral("hello")], tyStringLiteral("hello"))
+      ),
+    ])
+  ).toEqual({
+    y: tyStringLiteral("hello"),
+    x: tyFunc([tyStringLiteral("hello")], tyStringLiteral("hello")),
+  });
+});
+
+test.skip("solves var eq apply", () => {
+  expect(
+    solve([
+      equals(tyVariable("z"), tyFunc([tyVariable("y")], tyVariable("y"))),
+      equals(
+        tyVariable("x"),
+        tyApply(tyVariable("z"), [tyStringLiteral("hello")])
+      ),
+    ])
+  ).toEqual({
+    x: tyStringLiteral("hello"),
+  });
 });
