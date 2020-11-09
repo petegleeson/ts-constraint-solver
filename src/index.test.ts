@@ -1,10 +1,10 @@
 import {
   unify,
   solve,
+  apply,
   equals,
   tyConcat,
   tyVariable,
-  tyApply,
   tyFunc,
   tyStringLiteral,
 } from "./index";
@@ -115,10 +115,7 @@ test("solves eq identity apply", () => {
   expect(
     solve([
       equals(tyVariable("id"), tyFunc([tyVariable("x")], tyVariable("x"))),
-      equals(
-        tyVariable("y"),
-        tyApply(tyVariable("id"), [tyStringLiteral("hello")])
-      ),
+      apply(tyVariable("id"), [tyStringLiteral("hello")], tyVariable("y")),
     ])
   ).toEqual({
     id: tyFunc([tyVariable("x")], tyVariable("x")),
@@ -134,13 +131,10 @@ test("solves higher order function", () => {
   expect(
     solve([
       equals(tyVariable("x"), tyFunc([tyVariable("y")], tyVariable("z"))),
-      equals(
-        tyVariable("z"),
-        tyApply(tyVariable("y"), [tyStringLiteral("hello")])
-      ),
+      apply(tyVariable("y"), [tyStringLiteral("hello")], tyVariable("z")),
     ])
   ).toEqual({
     x: tyFunc([tyVariable("y")], tyVariable("z")),
-    y: tyFunc([tyVariable("hello")], tyVariable("z")),
+    y: tyFunc([tyStringLiteral("hello")], tyVariable("z")),
   });
 });

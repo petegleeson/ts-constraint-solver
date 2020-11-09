@@ -38,24 +38,7 @@ export const tyFunc = (params: Type[], returns: Type): TyFunc => ({
   returns,
 });
 
-type TyApply = {
-  type: "apply";
-  func: Type;
-  args: Type[];
-};
-export const tyApply = (func: Type, args: Type[]): TyApply => ({
-  type: "apply" as const,
-  args,
-  func,
-});
-
-type Type =
-  | TyConcat
-  | TyString
-  | TyStringLiteral
-  | TyVariable
-  | TyFunc
-  | TyApply;
+type Type = TyConcat | TyString | TyStringLiteral | TyVariable | TyFunc;
 
 // constraints
 type Equals = ReturnType<typeof equals>;
@@ -65,7 +48,15 @@ export const equals = (left: Type, right: Type) => ({
   right,
 });
 
-type Constraint = Equals;
+type Apply = ReturnType<typeof apply>;
+export const apply = (func: Type, args: Type[], ret: Type) => ({
+  type: "apply" as const,
+  func,
+  args,
+  ret,
+});
+
+type Constraint = Equals | Apply;
 
 // type substitutions
 type Substitution = { [name: string]: Type }; // @idea extend value to include history
@@ -119,15 +110,6 @@ const applySubst = (subst: Substitution, ty: Type): Type => {
       ty.params.map((t) => applySubst(subst, t)),
       applySubst(subst, ty.returns)
     );
-  } else if (ty.type === "apply") {
-    const result = unify(
-      applySubst(subst, ty.func),
-      tyFunc(ty.args, tyVariable("_return"))
-    );
-    if (result._return) {
-      return result._return;
-    }
-    throw Error("Unable to apply substitution");
   }
   return tyConcat(applySubst(subst, ty.first), applySubst(subst, ty.second));
 };
@@ -160,8 +142,33 @@ const compose = (a: Substitution, b: Substitution): Substitution => {
   }, a);
 };
 
+const initialise = (ty: Type): Type => {
+  if (ty.type === "func") {
+    return tyFunc(
+      ty.params.map((p) => (p.type === "var" ? tyVariable(`${p.name}'`) : p)),
+      ty.returns.type === "var" ? tyVariable(`${ty.returns.name}'`) : ty.returns
+    );
+  }
+  return ty;
+};
+
 export const solve = (constraints: Constraint[]): Substitution => {
   return constraints.reduce((subst, constraint) => {
+    if (constraint.type === "apply") {
+      let application = unify(
+        initialise(applySubst(subst, constraint.func)),
+        tyFunc(constraint.args, constraint.ret)
+      );
+      return compose(
+        subst,
+        Object.keys(application)
+          .filter((k) => !k.endsWith("'"))
+          .reduce((s, k) => {
+            s[k] = application[k];
+            return s;
+          }, {})
+      );
+    }
     return compose(subst, unify(constraint.left, constraint.right));
   }, {});
 };
