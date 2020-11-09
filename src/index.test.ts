@@ -4,8 +4,8 @@ import {
   equals,
   tyConcat,
   tyVariable,
-  tyFunc,
   tyApply,
+  tyFunc,
   tyStringLiteral,
 } from "./index";
 
@@ -111,16 +111,36 @@ test("solves func eq func", () => {
   });
 });
 
-test.skip("solves var eq apply", () => {
+test("solves eq identity apply", () => {
   expect(
     solve([
-      equals(tyVariable("z"), tyFunc([tyVariable("y")], tyVariable("y"))),
+      equals(tyVariable("id"), tyFunc([tyVariable("x")], tyVariable("x"))),
       equals(
-        tyVariable("x"),
-        tyApply(tyVariable("z"), [tyStringLiteral("hello")])
+        tyVariable("y"),
+        tyApply(tyVariable("id"), [tyStringLiteral("hello")])
       ),
     ])
   ).toEqual({
-    x: tyStringLiteral("hello"),
+    id: tyFunc([tyVariable("x")], tyVariable("x")),
+    y: tyStringLiteral("hello"),
+  });
+});
+
+// function x(y) {
+//   return y();
+// }
+
+test("solves higher order function", () => {
+  expect(
+    solve([
+      equals(tyVariable("x"), tyFunc([tyVariable("y")], tyVariable("z"))),
+      equals(
+        tyVariable("z"),
+        tyApply(tyVariable("y"), [tyStringLiteral("hello")])
+      ),
+    ])
+  ).toEqual({
+    x: tyFunc([tyVariable("y")], tyVariable("z")),
+    y: tyFunc([tyVariable("hello")], tyVariable("z")),
   });
 });

@@ -120,10 +120,14 @@ const applySubst = (subst: Substitution, ty: Type): Type => {
       applySubst(subst, ty.returns)
     );
   } else if (ty.type === "apply") {
-    return tyApply(
+    const result = unify(
       applySubst(subst, ty.func),
-      ty.args.map((t) => applySubst(subst, t))
+      tyFunc(ty.args, tyVariable("_return"))
     );
+    if (result._return) {
+      return result._return;
+    }
+    throw Error("Unable to apply substitution");
   }
   return tyConcat(applySubst(subst, ty.first), applySubst(subst, ty.second));
 };
