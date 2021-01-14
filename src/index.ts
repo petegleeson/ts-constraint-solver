@@ -164,6 +164,7 @@ export const solve = (constraints: Constraint[]): Substitution => {
         Object.keys(application)
           .filter((k) => !k.endsWith("'"))
           .reduce((s, k) => {
+            // @ts-ignore
             s[k] = application[k];
             return s;
           }, {})

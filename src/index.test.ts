@@ -123,18 +123,33 @@ test("solves eq identity apply", () => {
   });
 });
 
-// function x(y) {
-//   return y();
-// }
+// id("hello")
+test("solves apply", () => {
+  expect(
+    solve([
+      apply(tyVariable("id"), [tyStringLiteral("hello")], tyVariable("y")),
+    ])
+  ).toEqual({
+    id: tyFunc([tyStringLiteral("hello")], tyVariable("y")),
+  });
+});
 
+// function x(y) {
+//   return y("hello");
+// }
 test("solves higher order function", () => {
   expect(
     solve([
       equals(tyVariable("x"), tyFunc([tyVariable("y")], tyVariable("z"))),
-      apply(tyVariable("y"), [tyStringLiteral("hello")], tyVariable("z")),
+      apply(tyVariable("y"), [tyStringLiteral("hello")], tyVariable("j")),
+      equals(tyVariable("j"), tyVariable("z")),
     ])
   ).toEqual({
-    x: tyFunc([tyVariable("y")], tyVariable("z")),
+    j: tyVariable("z"),
     y: tyFunc([tyStringLiteral("hello")], tyVariable("z")),
+    x: tyFunc(
+      [tyFunc([tyStringLiteral("hello")], tyVariable("z"))],
+      tyVariable("z")
+    ),
   });
 });
