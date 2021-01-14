@@ -7,6 +7,7 @@ import {
   tyVariable,
   tyFunc,
   tyStringLiteral,
+  tyBooleanLiteral,
 } from "./index";
 
 test("type variable equals string literal", () => {
@@ -151,5 +152,21 @@ test("solves higher order function", () => {
       [tyFunc([tyStringLiteral("hello")], tyVariable("z"))],
       tyVariable("z")
     ),
+  });
+});
+
+// id(1)
+// id("hello")
+test("solves most general type", () => {
+  expect(
+    solve([
+      equals(tyVariable("id"), tyFunc([tyVariable("x")], tyVariable("x"))),
+      apply(tyVariable("id"), [tyStringLiteral("hello")], tyVariable("a")),
+      apply(tyVariable("id"), [tyBooleanLiteral(true)], tyVariable("b")),
+    ])
+  ).toEqual({
+    id: tyFunc([tyVariable("x")], tyVariable("x")),
+    a: tyStringLiteral("hello"),
+    b: tyBooleanLiteral(true),
   });
 });

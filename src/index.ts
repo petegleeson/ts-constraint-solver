@@ -10,6 +10,17 @@ export const tyString = () => ({
   type: "str" as const,
 });
 
+type TyBooleanLiteral = ReturnType<typeof tyBooleanLiteral>;
+export const tyBooleanLiteral = (value: boolean) => ({
+  type: "boollit" as const,
+  value,
+});
+
+type TyBoolean = ReturnType<typeof tyBoolean>;
+export const tyBoolean = () => ({
+  type: "bool" as const,
+});
+
 type TyVariable = ReturnType<typeof tyVariable>;
 export const tyVariable = (name: string) => ({
   type: "var" as const,
@@ -38,7 +49,14 @@ export const tyFunc = (params: Type[], returns: Type): TyFunc => ({
   returns,
 });
 
-type Type = TyConcat | TyString | TyStringLiteral | TyVariable | TyFunc;
+type Type =
+  | TyConcat
+  | TyString
+  | TyStringLiteral
+  | TyBoolean
+  | TyBooleanLiteral
+  | TyVariable
+  | TyFunc;
 
 // constraints
 type Equals = ReturnType<typeof equals>;
@@ -88,6 +106,12 @@ export const unify = (a: Type, b: Type): Substitution => {
   ) {
     return {};
   } else if (
+    a.type === "boollit" &&
+    b.type === "boollit" &&
+    a.value === b.value
+  ) {
+    return {};
+  } else if (
     a.type === "func" &&
     b.type === "func" &&
     a.params.length === b.params.length
@@ -101,7 +125,12 @@ export const unify = (a: Type, b: Type): Substitution => {
 };
 
 const applySubst = (subst: Substitution, ty: Type): Type => {
-  if (ty.type === "str" || ty.type === "strlit") {
+  if (
+    ty.type === "str" ||
+    ty.type === "strlit" ||
+    ty.type === "bool" ||
+    ty.type === "boollit"
+  ) {
     return ty;
   } else if (ty.type === "var") {
     return subst[ty.name] || ty;
