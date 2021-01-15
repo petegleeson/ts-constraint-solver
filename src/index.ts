@@ -174,8 +174,12 @@ const compose = (a: Substitution, b: Substitution): Substitution => {
 const initialise = (ty: Type): Type => {
   if (ty.type === "func") {
     return tyFunc(
-      ty.params.map((p) => (p.type === "var" ? tyVariable(`${p.name}'`) : p)),
-      ty.returns.type === "var" ? tyVariable(`${ty.returns.name}'`) : ty.returns
+      ty.params.map((p) =>
+        p.type === "var" ? tyVariable(`${p.name}'`) : initialise(p)
+      ),
+      ty.returns.type === "var"
+        ? tyVariable(`${ty.returns.name}'`)
+        : initialise(ty.returns)
     );
   }
   return ty;
