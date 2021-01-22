@@ -27,17 +27,6 @@ export const tyVariable = (name: string) => ({
   name,
 });
 
-type TyConcat = {
-  type: "concat";
-  first: Type;
-  second: Type;
-};
-export const tyConcat = (first: Type, second: Type): TyConcat => ({
-  type: "concat" as const,
-  first,
-  second,
-});
-
 type TyFunc = {
   type: "func";
   params: Type[];
@@ -50,7 +39,6 @@ export const tyFunc = (params: Type[], returns: Type): TyFunc => ({
 });
 
 type Type =
-  | TyConcat
   | TyString
   | TyStringLiteral
   | TyBoolean
@@ -74,31 +62,24 @@ export const apply = (func: Type, args: Type[], ret: Type) => ({
   ret,
 });
 
-type Constraint = Equals | Apply;
+type Concat = ReturnType<typeof concat>;
+export const concat = (first: Type, second: Type, ret: Type) => ({
+  type: "concat" as const,
+  first,
+  second,
+  ret,
+});
+
+type Constraint = Equals | Apply | Concat;
 
 // type substitutions
 type Substitution = { [name: string]: Type }; // @idea extend value to include history
-
-const simplify = (x: Type): Type => {
-  if (x.type === "concat") {
-    const first = simplify(x.first);
-    const second = simplify(x.second);
-    if (first.type === "strlit" && second.type === "strlit") {
-      return tyStringLiteral(`${first.value}${second.value}`);
-    } else {
-      return tyConcat(first, second);
-    }
-  }
-  return x;
-};
 
 export const unify = (a: Type, b: Type): Substitution => {
   if (a.type === "var") {
     return { [a.name]: b };
   } else if (b.type === "var") {
     return unify(b, a);
-  } else if (a.type === "concat" && b.type === "concat") {
-    return compose(unify(a.first, b.first), unify(a.second, b.second));
   } else if (
     a.type === "strlit" &&
     b.type === "strlit" &&
@@ -140,7 +121,7 @@ const applySubst = (subst: Substitution, ty: Type): Type => {
       applySubst(subst, ty.returns)
     );
   }
-  return tyConcat(applySubst(subst, ty.first), applySubst(subst, ty.second));
+  throw `Cannot apply substitution to type ${ty}`;
 };
 
 const extend = (subst: Substitution, name: string, ty: Type): Substitution => {
@@ -157,11 +138,11 @@ const extend = (subst: Substitution, name: string, ty: Type): Substitution => {
     ...Object.entries(subst).reduce((curr, [k, t]) => {
       return {
         ...curr,
-        [k]: simplify(applySubst({ [name]: ty }, t)),
+        [k]: applySubst({ [name]: ty }, t),
       };
     }, {}),
     // apply current subst to ty
-    [name]: simplify(applySubst(subst, ty)),
+    [name]: applySubst(subst, ty),
   };
 };
 
@@ -202,6 +183,19 @@ export const solve = (constraints: Constraint[]): Substitution => {
             return s;
           }, {})
       );
+    } else if (constraint.type === "concat") {
+      const first = applySubst(subst, constraint.first);
+      const second = applySubst(subst, constraint.second);
+      if (first.type === "strlit" && second.type === "strlit") {
+        return compose(
+          subst,
+          unify(
+            constraint.ret,
+            tyStringLiteral(`${first.value}${second.value}`)
+          )
+        );
+      }
+      return subst;
     }
     return compose(subst, unify(constraint.left, constraint.right));
   }, {});
