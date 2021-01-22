@@ -3,7 +3,7 @@ import {
   solve,
   apply,
   equals,
-  tyConcat,
+  concat,
   tyVariable,
   tyFunc,
   tyStringLiteral,
@@ -31,49 +31,38 @@ test("equals is symmetric", () => {
 test("string literal concat string literal", () => {
   expect(
     solve([
-      equals(
-        tyVariable("x"),
-        tyConcat(tyStringLiteral("hello "), tyStringLiteral("world"))
+      concat(
+        tyStringLiteral("hello "),
+        tyStringLiteral("world"),
+        tyVariable("x")
       ),
     ])
   ).toEqual({ x: tyStringLiteral("hello world") });
 });
 
-test("nested string literal concat string literal", () => {
+test("chained string literal concat string literal", () => {
   expect(
     solve([
-      equals(
-        tyVariable("x"),
-        tyConcat(
-          tyStringLiteral("hello "),
-          tyConcat(tyStringLiteral("brave "), tyStringLiteral("world"))
-        )
+      concat(
+        tyStringLiteral("brave "),
+        tyStringLiteral("world"),
+        tyVariable("y")
       ),
+      concat(tyStringLiteral("hello "), tyVariable("y"), tyVariable("x")),
     ])
-  ).toEqual({ x: tyStringLiteral("hello brave world") });
+  ).toEqual({
+    x: tyStringLiteral("hello brave world"),
+    y: tyStringLiteral("brave world"),
+  });
 });
 
 test("unify multiple constraints", () => {
   expect(
     solve([
       equals(tyVariable("x"), tyStringLiteral("world")),
-      equals(
-        tyVariable("y"),
-        tyConcat(tyStringLiteral("hello "), tyVariable("x"))
-      ),
+      concat(tyStringLiteral("hello "), tyVariable("x"), tyVariable("y")),
     ])
   ).toEqual({ x: tyStringLiteral("world"), y: tyStringLiteral("hello world") });
-});
-
-test("solve eq concat", () => {
-  expect(
-    solve([
-      equals(
-        tyConcat(tyStringLiteral("hello "), tyVariable("x")),
-        tyConcat(tyStringLiteral("hello "), tyStringLiteral("world"))
-      ),
-    ])
-  ).toEqual({ x: tyStringLiteral("world") });
 });
 
 test("solves var eq var", () => {
