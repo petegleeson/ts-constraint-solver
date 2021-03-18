@@ -38,13 +38,25 @@ export const tyFunc = (params: Type[], returns: Type): TyFunc => ({
   returns,
 });
 
+type TyObject = {
+  type: "obj";
+  fields: {
+    [k: string]: Type;
+  };
+};
+export const tyObject = (fields: { [k: string]: Type }): TyObject => ({
+  type: "obj" as const,
+  fields,
+});
+
 type Type =
   | TyString
   | TyStringLiteral
   | TyBoolean
   | TyBooleanLiteral
   | TyVariable
-  | TyFunc;
+  | TyFunc
+  | TyObject;
 
 // constraints
 type Equals = ReturnType<typeof equals>;
@@ -62,6 +74,14 @@ export const apply = (func: Type, args: Type[], ret: Type) => ({
   ret,
 });
 
+type Index = ReturnType<typeof index>;
+export const index = (obj: Type, field: Type, ret: Type) => ({
+  type: "index" as const,
+  obj,
+  field,
+  ret,
+});
+
 type Concat = ReturnType<typeof concat>;
 export const concat = (first: Type, second: Type, ret: Type) => ({
   type: "concat" as const,
@@ -70,7 +90,7 @@ export const concat = (first: Type, second: Type, ret: Type) => ({
   ret,
 });
 
-type Constraint = Equals | Apply | Concat;
+type Constraint = Equals | Apply | Concat | Index;
 
 // type substitutions
 type Substitution = { [name: string]: Type }; // @idea extend value to include history
@@ -119,6 +139,13 @@ const applySubst = (subst: Substitution, ty: Type): Type => {
     return tyFunc(
       ty.params.map((t) => applySubst(subst, t)),
       applySubst(subst, ty.returns)
+    );
+  } else if (ty.type === "obj") {
+    return tyObject(
+      Object.entries(ty.fields).reduce((o, [k, field]) => {
+        o[k] = applySubst(subst, field);
+        return o;
+      }, {} as { [k: string]: Type })
     );
   }
   throw `Cannot apply substitution to type ${ty}`;
@@ -194,6 +221,15 @@ export const solve = (constraints: Constraint[]): Substitution => {
             tyStringLiteral(`${first.value}${second.value}`)
           )
         );
+      }
+      return subst;
+    } else if (constraint.type === "index") {
+      const obj = applySubst(subst, constraint.obj);
+      const field = applySubst(subst, constraint.field);
+      if (obj.type === "obj" && field.type === "strlit") {
+        if (obj.fields[field.value]) {
+          return compose(subst, unify(constraint.ret, obj.fields[field.value]));
+        }
       }
       return subst;
     }
