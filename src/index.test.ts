@@ -4,6 +4,8 @@ import {
   apply,
   equals,
   concat,
+  index,
+  tyObject,
   tyVariable,
   tyFunc,
   tyStringLiteral,
@@ -157,5 +159,19 @@ test("solves most general type", () => {
     id: tyFunc([tyVariable("x")], tyVariable("x")),
     a: tyStringLiteral("hello"),
     b: tyBooleanLiteral(true),
+  });
+});
+
+test("valid object index", () => {
+  expect(
+    solve([
+      index(
+        tyObject({ firstName: tyStringLiteral("pete") }),
+        tyStringLiteral("firstName"),
+        tyVariable("x")
+      ),
+    ])
+  ).toEqual({
+    x: tyStringLiteral("pete"),
   });
 });
