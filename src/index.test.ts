@@ -175,3 +175,15 @@ test("valid object index", () => {
     x: tyStringLiteral("pete"),
   });
 });
+
+test("invalid object index", () => {
+  expect(
+    solve([
+      index(
+        tyObject({ firstName: tyStringLiteral("pete") }),
+        tyStringLiteral("lastName"),
+        tyVariable("x")
+      ),
+    ])
+  ).toEqual({});
+});
