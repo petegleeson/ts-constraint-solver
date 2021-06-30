@@ -1,4 +1,15 @@
 // types
+type TyNumberLiteral = ReturnType<typeof tyNumberLiteral>;
+export const tyNumberLiteral = (value: number) => ({
+  type: "numlit" as const,
+  value,
+});
+
+type TyNumber = ReturnType<typeof tyNumber>;
+export const tyNumber = () => ({
+  type: "num" as const,
+});
+
 type TyStringLiteral = ReturnType<typeof tyStringLiteral>;
 export const tyStringLiteral = (value: string) => ({
   type: "strlit" as const,
@@ -50,6 +61,8 @@ export const tyObject = (fields: { [k: string]: Type }): TyObject => ({
 });
 
 type Type =
+  | TyNumber
+  | TyNumberLiteral
   | TyString
   | TyStringLiteral
   | TyBoolean
@@ -101,6 +114,12 @@ export const unify = (a: Type, b: Type): Substitution => {
   } else if (b.type === "var") {
     return unify(b, a);
   } else if (
+    a.type === "numlit" &&
+    b.type === "numlit" &&
+    a.value === b.value
+  ) {
+    return {};
+  } else if (
     a.type === "strlit" &&
     b.type === "strlit" &&
     a.value === b.value
@@ -127,6 +146,8 @@ export const unify = (a: Type, b: Type): Substitution => {
 
 const applySubst = (subst: Substitution, ty: Type): Type => {
   if (
+    ty.type === "num" ||
+    ty.type === "numlit" ||
     ty.type === "str" ||
     ty.type === "strlit" ||
     ty.type === "bool" ||

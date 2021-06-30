@@ -9,6 +9,8 @@ import {
   tyVariable,
   tyFunc,
   tyStringLiteral,
+  tyNumberLiteral,
+  tyNumber,
   tyBooleanLiteral,
 } from "./index";
 
@@ -186,4 +188,16 @@ test("invalid object index", () => {
       ),
     ])
   ).toEqual({});
+});
+
+test("equal number types", () => {
+  expect(
+    solve([
+      equals(tyNumber(), tyVariable("x")),
+      equals(tyNumberLiteral(1), tyVariable("y")),
+    ])
+  ).toEqual({
+    x: tyNumber(),
+    y: tyNumberLiteral(1),
+  });
 });
