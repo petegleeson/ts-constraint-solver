@@ -35,6 +35,28 @@ const generateContraints = (
   };
   let n; // 🤮
   switch (node.kind) {
+    case ts.SyntaxKind.ArrowFunction:
+      n = node as ts.ArrowFunction;
+      return [
+        ...generateChildrenConstraints(),
+        equals(
+          tyVariable(getId(n)),
+          tyFunc(
+            n.parameters.map((p) => tyVariable(getId(p))),
+            tyVariable(getId(n.body))
+          )
+        ),
+      ];
+    case ts.SyntaxKind.CallExpression:
+      n = node as ts.CallExpression;
+      return [
+        ...generateChildrenConstraints(),
+        apply(
+          tyVariable(getId(n.expression)),
+          n.arguments.map((a) => tyVariable(getId(a))),
+          tyVariable(getId(n))
+        ),
+      ];
     case ts.SyntaxKind.Identifier:
       n = node as ts.Identifier;
       let declarationId = (() => {
@@ -93,8 +115,8 @@ const generateContraints = (
     case ts.SyntaxKind.VariableDeclaration:
       n = node as ts.VariableDeclaration;
       return [
-        equals(tyVariable(getId(n.name)), tyVariable(getId(n.initializer!))),
         ...generateChildrenConstraints(),
+        equals(tyVariable(getId(n.name)), tyVariable(getId(n.initializer!))),
       ];
     default:
       return generateChildrenConstraints();
@@ -129,4 +151,18 @@ test("template-string", () => {
     tyStringLiteral("http://mysite.com/api/content/1")
   );
   expect(substitutions.greeting).toEqual(tyStringLiteral("gday there, bob"));
+});
+
+test("function", () => {
+  let entryPoint = path.resolve("./src/__fixtures__/function.ts");
+  let program = ts.createProgram([entryPoint], {
+    target: ts.ScriptTarget.ES2015,
+  });
+  let entry = program.getSourceFiles().find((f) => f.fileName === entryPoint)!;
+  let checker = program.getTypeChecker();
+  let constraints = generateContraints(entry, checker);
+  let substitutions = solve(constraints);
+  expect(substitutions.id).toEqual(tyFunc([tyVariable("x")], tyVariable("x")));
+  expect(substitutions.one).toEqual(tyNumberLiteral(1));
+  expect(substitutions.name).toEqual(tyStringLiteral("bob"));
 });
