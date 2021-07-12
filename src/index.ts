@@ -60,7 +60,7 @@ export const tyObject = (fields: { [k: string]: Type }): TyObject => ({
   fields,
 });
 
-type Type =
+export type Type =
   | TyNumber
   | TyNumberLiteral
   | TyString
@@ -103,7 +103,7 @@ export const concat = (first: Type, second: Type, ret: Type) => ({
   ret,
 });
 
-type Constraint = Equals | Apply | Concat | Index;
+export type Constraint = Equals | Apply | Concat | Index;
 
 // type substitutions
 type Substitution = { [name: string]: Type }; // @idea extend value to include history
@@ -180,17 +180,18 @@ const extend = (subst: Substitution, name: string, ty: Type): Substitution => {
       ...compose(subst, unify(ty, subst[name])),
     };
   }
+  // apply current subst to ty
+  const substTy = applySubst(subst, ty);
   // n^2
   return {
-    // apply ty subst to current subst
+    // apply ty to current subst
     ...Object.entries(subst).reduce((curr, [k, t]) => {
       return {
         ...curr,
-        [k]: applySubst({ [name]: ty }, t),
+        [k]: applySubst({ [name]: substTy }, t),
       };
     }, {}),
-    // apply current subst to ty
-    [name]: applySubst(subst, ty),
+    [name]: substTy,
   };
 };
 
